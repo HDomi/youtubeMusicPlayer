@@ -165,8 +165,7 @@ export default {
     },
     
     getTitle (key) {
-      const split = key.split('-');
-      return split[1];
+      return key.split('-').slice(1).join('-');
     },
 
     getNowPlay (item) { //지금 플레이중인지, true/false

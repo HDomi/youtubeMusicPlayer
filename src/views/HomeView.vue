@@ -176,6 +176,7 @@ export default {
     setPlayNameForDatabase () {
       const db = getDatabase();
       set(ref(db, `playName/`), this.nowSingTitle);
+      set(ref(db, `playCode/`), this.videoId);
     },
 
     onClickChange (item) { //아이템을 눌러 노래 바꾸기

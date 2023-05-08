@@ -28,17 +28,17 @@
       </div>
     </div>
     <div class="playList-wrap">
-      <div v-if="!playList.length" class="not-set-sing">추가된 노래가 없습니다!</div>
-      <div class="playList-item" :class="{nowPlaying: getNowPlay(item.link)}" v-for="(item, index) in playList" :key="`play-${index}`">
+      <div v-if="!Object.keys(playList).length" class="not-set-sing">추가된 노래가 없습니다!</div>
+      <div class="playList-item" :class="{nowPlaying: getNowPlay(item.link)}" v-for="(item, key, index) in playList" :key="`play-${index}`">
         <div class="info-wrap" @click="onClickChange(item.link)">
-          <div class="name">{{ item.label }}</div>
+          <div class="name">{{ key }}</div>
           <div class="link">{{ item.link }}</div>
         </div>
         <div class="control-wrap">
           <div v-if="getNowPlay(item.link) && isPlay" @click="pause" class="btn">
             <img src="../assets/images/pause.svg"/>
           </div>
-          <div v-else class="btn" @click="deleteItem(item.link)">
+          <div v-else class="btn" @click="deleteItem(key)">
             <div class="delete">-</div>
           </div>
         </div>
@@ -48,7 +48,9 @@
 </template>
 
 <script>
-// import { getTimeFromURL } from 'vue-youtube-embed' 
+import { initializeApp } from "firebase/app";
+import { getDatabase, ref, get, child, set} from "firebase/database";
+import firebaseConfig from '../config/firebaseConfig'
 export default {
   name: "HomeView",
   components: {
@@ -57,16 +59,9 @@ export default {
     return {
       isPlay: false,
       isAddSing: false,
-      playList: [
-        {label: '몇번째', link: 'https://www.youtube.com/watch?v=Yagz8h0jppA'},
-        {label: '능소화', link: 'https://www.youtube.com/watch?v=hbeSbiaHKbw'},
-        {label: '발밤발밤', link: 'https://www.youtube.com/watch?v=I9v35zgOkZU'},
-        {label: '그러나', link: 'https://www.youtube.com/watch?v=gZLoabyxzes'},
-        {label: 'Wash Away', link: 'https://www.youtube.com/watch?v=OTRGehVo_JM'},
-        {label: 'Fan', link: 'https://www.youtube.com/watch?v=eINjPkO7w4M'},
-        {label: 'Officially Missing You', link: 'https://www.youtube.com/watch?v=lrSQPqD69AI'},
-        {label: '박하사탕', link: 'https://www.youtube.com/watch?v=-85-sjG_BiQ'},
-      ],
+      initializeApp: null,
+      musicDataOnWeb: {},
+      playList: {},
       videoId: '',
       nowSingTitle: '',
       nowSingTime: '',
@@ -77,15 +72,18 @@ export default {
   },
   computed: {
     playListId () {
-      const idList = this.playList.map(l => l.link.replace('https://www.youtube.com/watch?v=', ''));
+      const idList = [];
+      Object.keys(this.playList).forEach(key => {
+        idList.push(this.playList[key].link.replace('https://www.youtube.com/watch?v=', ''));
+      });
       return idList;
     },
   },
-  // watch: {
-  //   playList () {
-  //     this.playListId = this.playList.map(l => l.link.replace('https://www.youtube.com/watch?v=', ''));
-  //   }
-  // },
+   watch: {
+    videoId () {
+      this.fetchMusicItem();
+    }
+  },
   methods: {
     ready (event) { //노래 준비됨
       this.isPlay = false;
@@ -103,7 +101,12 @@ export default {
       const nowIndex = this.playListId.indexOf(this.videoId, 0);
       const nextNum = this.playListId.length <= nowIndex + 1 ? 0 : nowIndex + 1;
       this.videoId = this.playListId[nextNum];
-      this.playList.splice(nowIndex, 1);
+      Object.keys(this.playList).forEach(key => {
+        if(this.playList[key].link.includes(this.playListId[nowIndex])){
+          this.deleteItem(key);
+        }
+      });
+      
     },
     play () { //재생
       this.isPlay = true;
@@ -124,16 +127,41 @@ export default {
       this.videoId = this.getCode(item);
     },
     addSing() { //리스트에 아이템 추가
-      this.playList.push({label: this.addSingTitle, link: this.addSingLink});
+      this.fetchUpdate(true);
       this.addSingTitle = this.addSingLink = '';
       this.isAddSing = false;
     },
-    deleteItem (item) { //리스트에서 아이템 삭제
-      const nowIndex = this.playList.findIndex(l => l.link === item);
-      this.playList.splice(nowIndex, 1);
-    }
+    deleteItem (key) { //리스트에서 아이템 삭제
+      this.fetchUpdate(false, key);
+    },
+    fetchUpdate (isAdd, key) {
+      const db = getDatabase();
+      if(isAdd){
+        set(ref(db, `music/${this.addSingTitle}/`), {link: this.addSingLink});
+      }else{
+        set(ref(db, `music/${key}/`), {});
+      }
+      this.fetchMusicItem();
+    },
+    async fetchMusicItem () {
+      const dbRef = ref(getDatabase(this.initializeApp));
+      await get(child(dbRef, `music/`)).then((snapshot) => {
+        if (snapshot.exists()) {
+          this.musicDataOnWeb = snapshot.val();
+          this.playList = this.musicDataOnWeb;
+          console.log('FETCH DATA\n', this.playList);
+        } else {
+          console.log("No data available");
+        }
+      }).catch((error) => {
+        console.error(error);
+      });
+    },
   },
-  mounted() {
+  async mounted() {
+    this.initializeApp = initializeApp(firebaseConfig);
+    await this.fetchMusicItem();
+    
     this.videoId = this.playListId[0]; //제일 첫번째 목록에 있는 노래 자동재생
     this.isPlay = true;
   },

@@ -5,7 +5,9 @@
     <div class="big"></div>
     <div class="controlBar-wrap">
       <div class="flux">Music Player</div>
-      <div class="description">바로 밑에 있는 목록이 재생되고 재생이 완료된 노래는 삭제됩니다.</div>
+      <!-- <div class="description">바로 밑에 있는 목록이 재생되고 재생이 완료된 노래는 삭제됩니다.</div>-->
+      <div class="description">유투브 영상 링크를 복사하여 노래추가하기를 통해 노래를 추가해 주세요.</div>
+      <div class="description">재생/일시정지를 임의로 조작하지 말아주세요..</div>
       <youtube-media :video-id="videoId" @ready="ready" @playing="playing" @ended="change" :player-vars="{autoplay: 1}" style="position: absolute; left: -9999px; top: -9999px; width: 0; height: 0"></youtube-media>
       <div class="playing-info-wrap">
         <div v-if="nowSingTitle.length" class="play-title">{{ nowSingTitle }}</div>
@@ -31,7 +33,7 @@
       <div v-if="!Object.keys(playList).length" class="not-set-sing">추가된 노래가 없습니다!</div>
       <div class="playList-item" :class="{nowPlaying: getNowPlay(item.link)}" v-for="(item, key, index) in playList" :key="`play-${index}`">
         <div class="info-wrap" @click="onClickChange(item.link)">
-          <div class="name">{{ key }}</div>
+          <div class="name">{{ getTitle(key) }}</div>
           <div class="link">{{ item.link }}</div>
         </div>
         <div class="control-wrap">
@@ -81,71 +83,116 @@ export default {
   },
    watch: {
     videoId () {
-      this.fetchMusicItem();
+      this.fetchList();
     }
   },
   methods: {
     ready (event) { //노래 준비됨
-      this.isPlay = false;
+      this.setPlayStatusForDatabase(false);
       this.player = event.target;
     },
+
     playing (event) { //노래 시작됨
-      this.isPlay = true;
+      this.setPlayStatusForDatabase(true);
       const playingData = this.player.getVideoData();
       this.nowSingTitle = playingData.title;
+      this.setPlayNameForDatabase();
       console.log('@@@@@@@@@@@@',event);
       console.log('노래가 재생됩니다.\n', this.nowSingTitle);
     },
+
     change () { //노래바꾸기
-      this.isPlay = true;
+      this.setPlayStatusForDatabase(true);
       const nowIndex = this.playListId.indexOf(this.videoId, 0);
       const nextNum = this.playListId.length <= nowIndex + 1 ? 0 : nowIndex + 1;
       this.videoId = this.playListId[nextNum];
-      Object.keys(this.playList).forEach(key => {
-        if(this.playList[key].link.includes(this.playListId[nowIndex])){
-          this.deleteItem(key);
-        }
-      });
+      // Object.keys(this.playList).forEach(key => {
+      //   if(this.playList[key].link.includes(this.playListId[nowIndex])){
+      //     this.deleteItem(key);
+      //   }
+      // });
       
     },
+
     play () { //재생
-      this.isPlay = true;
+      this.setPlayStatusForDatabase(true);
       this.player.playVideo();
     },
+
     pause () { //일시정지
-      this.isPlay = false;
+      this.setPlayStatusForDatabase(false);
       this.player.pauseVideo();
     },
+
+    setPlayStatusForDatabase (status) {
+      this.isPlay = status;
+      const db = getDatabase();
+      if(status){
+        set(ref(db, `playStatus/`), true);
+      }else{
+        set(ref(db, `playStatus/`), false);
+      }
+      this.fetchList();
+    },
+
+    async fetchStatus () {
+      const dbRef = ref(getDatabase(this.initializeApp));
+      await get(child(dbRef, `playStatus/`)).then((snapshot) => {
+        if (snapshot.exists()) {
+          this.isPlay = snapshot.val();
+        }
+      }).catch((error) => {
+        console.error(error);
+      });
+    },
+
     getCode (item) { //전체 링크에서 영상 코드만 추출
       return item.replace('https://www.youtube.com/watch?v=', '');
     },
+
+    getTitle (key) {
+      const split = key.split('-');
+      return split[1];
+    },
+
     getNowPlay (item) { //지금 플레이중인지, true/false
       const id = this.getCode(item);
       return id === this.videoId;
     },
+
+    setPlayNameForDatabase () {
+      const db = getDatabase();
+      set(ref(db, `playName/`), this.nowSingTitle);
+    },
+
     onClickChange (item) { //아이템을 눌러 노래 바꾸기
       this.videoId = this.getCode(item);
     },
+
     addSing() { //리스트에 아이템 추가
       this.fetchUpdate(true);
       this.addSingTitle = this.addSingLink = '';
       this.isAddSing = false;
     },
+
     deleteItem (key) { //리스트에서 아이템 삭제
       this.fetchUpdate(false, key);
     },
+
     fetchUpdate (isAdd, key) {
       const db = getDatabase();
+      const nextLength = Object.keys(this.playList).length + 1;
       if(isAdd){
-        set(ref(db, `music/${this.addSingTitle}/`), {link: this.addSingLink});
+        set(ref(db, `musicList/${nextLength}-${this.addSingTitle}/`), {link: this.addSingLink});
       }else{
-        set(ref(db, `music/${key}/`), {});
+        set(ref(db, `musicList/${key}/`), {});
       }
-      this.fetchMusicItem();
+      this.fetchList();
     },
+
     async fetchMusicItem () {
       const dbRef = ref(getDatabase(this.initializeApp));
-      await get(child(dbRef, `music/`)).then((snapshot) => {
+      await get(child(dbRef, `musicList/`)).then((snapshot) => {
         if (snapshot.exists()) {
           this.musicDataOnWeb = snapshot.val();
           this.playList = this.musicDataOnWeb;
@@ -157,13 +204,19 @@ export default {
         console.error(error);
       });
     },
+    
+    async fetchList () {
+      await this.fetchMusicItem();
+      await this.fetchStatus();
+    },
   },
+  
   async mounted() {
     this.initializeApp = initializeApp(firebaseConfig);
-    await this.fetchMusicItem();
-    
+    await this.fetchList();
+
     this.videoId = this.playListId[0]; //제일 첫번째 목록에 있는 노래 자동재생
-    this.isPlay = true;
+    this.setPlayStatusForDatabase(true);
   },
 }
 </script>
@@ -259,9 +312,12 @@ export default {
       .set-info{
         display: flex;
         flex-direction: column;
+        height: 100px;
         width: calc(100% - 96px);
         input{
           width: 100%;
+          height: 40px;
+          padding: 0 12px;
           background: rgba(248, 248, 248, 0.682);
           &::placeholder{
             color: #000;
@@ -352,6 +408,17 @@ export default {
       }
       .btn-wrap{
         margin-top: 0px;
+      }
+    }
+  }
+  @media (max-width: 450px) {
+    .playList-wrap{
+      .playList-item{
+        .info-wrap{
+          .link{
+            display: none;
+          }
+        }
       }
     }
   }

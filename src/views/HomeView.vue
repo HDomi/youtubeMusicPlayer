@@ -381,6 +381,10 @@ export default {
         .name{
           font-size: 22px;
           font-weight: bold;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          max-width: 250px;
         }
         .link{
         }
@@ -428,6 +432,10 @@ export default {
     .playList-wrap{
       .playList-item{
         .info-wrap{
+          .name{
+            font-size: 15px;
+            max-width: 150px;
+          }
           .link{
             display: none;
           }

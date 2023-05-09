@@ -6,7 +6,7 @@
       <div class="controlBar-wrap">
         <div class="flux">Music Player</div>
         <div class="description">유투브 영상 링크를 복사하여 노래추가하기를 통해 노래를 추가해 주세요.</div>
-        <div class="refresh" @click="fetchList">새로고침</div>
+        <img src="../assets/images/refresh-w.png" @click="fetchList" class="refresh"/>
       </div>
       <div class="add-sing-wrap">
         <span v-if="!isAddSing" @click="isAddSing = true">노래 추가하기</span>
@@ -174,6 +174,14 @@
       position: relative;
       .description{
         font-size: 13px;
+      }
+      .refresh{
+        position: absolute;
+        right: 20px;
+        bottom: 20px;
+        width: 25px;
+        height: 25px;
+        cursor: pointer;
       }
       .flux {
         font-family: neon;

@@ -19,7 +19,7 @@
         <img @click="change" src="../assets/images/skip-white.png"/>
       </div>
     </div>
-    <div class="add-sing-wrap">
+    <!-- <div class="add-sing-wrap">
       <span v-if="!isAddSing" @click="isAddSing = true">노래 추가하기</span>
       <div v-if="isAddSing" class="add-sing-info">
         <div class="set-info">
@@ -28,7 +28,7 @@
         </div>
         <div class="add-btn" @click="addSing">+</div>
       </div>
-    </div>
+    </div> -->
     <div class="playList-wrap">
       <div v-if="!Object.keys(playList).length" class="not-set-sing">추가된 노래가 없습니다!</div>
       <div class="playList-item" :class="{nowPlaying: getNowPlay(item.link)}" v-for="(item, key, index) in playList" :key="`play-${index}`">

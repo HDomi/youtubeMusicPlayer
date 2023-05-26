@@ -5,14 +5,14 @@
       <div class="big"></div>
       <div class="controlBar-wrap">
         <div class="flux">Music Player</div>
-        <div class="description">유투브 영상 링크를 복사하여 노래추가하기를 통해 노래를 추가해 주세요.</div>
+        <div class="description">유투브 영상 링크를 복사하여 노래추가하기를 통해 노래를 추가해 주세요.<br/>추가하시기전에 한번씩 새로고침</div>
         <img src="../assets/images/refresh-w.png" @click="fetchList" class="refresh"/>
       </div>
       <div class="add-sing-wrap">
         <span v-if="!isAddSing" @click="isAddSing = true">노래 추가하기</span>
         <div v-if="isAddSing" class="add-sing-info">
           <div class="set-info">
-            <input v-model="addSingTitle" placeholder="제목" type="text"/>
+            <input v-model="addSingTitle" placeholder="제목" type="text" @input="validateInput"/>
             <input v-model="addSingLink" placeholder="링크" type="text" style="margin-top: 7px;"/>
           </div>
           <div class="add-btn" @click="addSing">+</div>
@@ -112,11 +112,18 @@
         this.fetchUpdate(false, key);
       },
   
+      validateInput() {
+        if (this.addSingTitle.includes("-")) {
+          this.addSingTitle = this.addSingTitle.replace(/-/g, "");
+        }
+      },
+
       fetchUpdate (isAdd, key) {
         const db = getDatabase();
-        const nextLength = Object.keys(this.playList).length + 1;
+        const nowDate = new Date();
+        const timeStamp = nowDate.getTime();
         if(isAdd){
-          set(ref(db, `musicList/${nextLength}-${this.addSingTitle}/`), {link: this.addSingLink});
+          set(ref(db, `musicList/${timeStamp}-${this.addSingTitle}/`), {link: this.addSingLink});
         }else{
           set(ref(db, `musicList/${key}/`), {});
         }

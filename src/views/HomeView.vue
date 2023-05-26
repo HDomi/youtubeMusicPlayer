@@ -5,7 +5,6 @@
     <div class="big"></div>
     <div class="controlBar-wrap">
       <div class="flux">Music Player</div>
-      <!-- <div class="description">바로 밑에 있는 목록이 재생되고 재생이 완료된 노래는 삭제됩니다.</div>-->
       <div class="description">유투브 영상 링크를 복사하여 노래추가하기를 통해 노래를 추가해 주세요.</div>
       <div class="description">재생/일시정지를 임의로 조작하지 말아주세요..</div>
       <youtube-media :video-id="videoId" @ready="ready" @playing="playing" @ended="change" :player-vars="{autoplay: 1}" style="position: absolute; left: -9999px; top: -9999px; width: 0; height: 0"></youtube-media>
@@ -101,7 +100,9 @@ export default {
       console.log('노래가 재생됩니다.\n', this.nowSingTitle);
     },
 
-    change () { //노래바꾸기
+    async change () { //노래바꾸기
+      await this.fetchList();
+      
       this.setPlayStatusForDatabase(true);
       const nowIndex = this.playListId.indexOf(this.videoId, 0);
       const nextNum = this.playListId.length <= nowIndex + 1 ? 0 : nowIndex + 1;
@@ -195,9 +196,10 @@ export default {
 
     fetchUpdate (isAdd, key) {
       const db = getDatabase();
-      const nextLength = Object.keys(this.playList).length + 1;
+      const nowDate = new Date();
+      const timeStamp = nowDate.getTime();
       if(isAdd){
-        set(ref(db, `musicList/${nextLength}-${this.addSingTitle}/`), {link: this.addSingLink});
+        set(ref(db, `musicList/${timeStamp}-${this.addSingTitle}/`), {link: this.addSingLink});
       }else{
         set(ref(db, `musicList/${key}/`), {});
       }
